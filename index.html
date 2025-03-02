@@ -93,7 +93,7 @@
     <!-- SIDE CHOICE SCREEN -->
     <div id="sideScreen" class="overlayScreen">
       <p>Choose Your Side:</p>
-      <!-- North appears above South -->
+      <!-- North above South -->
       <button id="northSideBtn">North [N]</button>
       <button id="southSideBtn">South [S]</button>
       <p>You can also press N or S on your keyboard.</p>
@@ -123,7 +123,7 @@
   <img id="logo" src="logo.png" alt="Logo">
 
   <script>
-    // Helper: Remove White Background
+    // Helper: Remove white background from images
     function removeWhiteBackground(image, callback) {
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = image.width;
@@ -143,7 +143,7 @@
       newImage.onload = () => callback(newImage);
     }
 
-    // Global Variables & State
+    // Global variables and state
     const canvas = document.getElementById("mancalaCanvas");
     const ctx = canvas.getContext("2d");
 
@@ -153,19 +153,19 @@
     const difficultyScreen = document.getElementById("difficultyScreen");
     const gameOverScreen = document.getElementById("gameOverScreen");
 
-    let gameState = "menu";  // "menu", "instructions", "side_choice", "difficulty_choice", "playing", "game_over"
-    let playerSide = null;   // "south" or "north"
-    let difficulty = null;   // "easy", "medium", "hard"
-    let currentPlayer = null;  // whose turn: "south" or "north"
+    let gameState = "menu"; // "menu", "instructions", "side_choice", "difficulty_choice", "playing", "game_over"
+    let playerSide = null;  // "south" or "north"
+    let difficulty = null;  // "easy", "medium", "hard"
+    let currentPlayer = null; // whose turn: "south" or "north"
 
-    // The board: indices 0-5 (South pits), 6 (South store), 7-12 (North pits), 13 (North store).
+    // Board: indices 0-5 (South pits), 6 (South store), 7-12 (North pits), 13 (North store)
     let board = [];
     let isAnimating = false;
     let aiThinking = false;
 
     const WIDTH = 720, HEIGHT = 500;
 
-    // Pit Geometry
+    // Pit geometry
     const pitPositions = {};
     const marginX = 120;
     const marginY = 50;
@@ -174,34 +174,33 @@
 
     function computePitPositions() {
       let spacing = (WIDTH - 2 * marginX) / 6;
-      // South pits (indices 0–5)
+      // South pits (indices 0-5)
       for (let i = 0; i < 6; i++) {
-        let cx = marginX + spacing/2 + i * spacing;
+        let cx = marginX + spacing / 2 + i * spacing;
         let cy = HEIGHT - marginY;
         pitPositions[i] = { cx, cy, radius: pitRadius, type: "pit" };
       }
-      // North pits: moved down so counters are visible.
+      // North pits: moved down so counters are visible
       const northY = marginY + pitRadius + 20;
       for (let i = 7; i < 13; i++) {
         let idx = i - 7;
-        let cx = marginX + spacing/2 + (5 - idx) * spacing;
+        let cx = marginX + spacing / 2 + (5 - idx) * spacing;
         let cy = northY;
         pitPositions[i] = { cx, cy, radius: pitRadius, type: "pit" };
       }
       // South store (index 6) on right
-      pitPositions[6] = { cx: WIDTH - marginX/2, cy: HEIGHT/2, width: storeWidth, height: storeHeight, type: "store" };
+      pitPositions[6] = { cx: WIDTH - marginX / 2, cy: HEIGHT / 2, width: storeWidth, height: storeHeight, type: "store" };
       // North store (index 13) on left
-      pitPositions[13] = { cx: marginX/2, cy: HEIGHT/2, width: storeWidth, height: storeHeight, type: "store" };
+      pitPositions[13] = { cx: marginX / 2, cy: HEIGHT / 2, width: storeWidth, height: storeHeight, type: "store" };
     }
 
-    // Image Loading
+    // Image loading
     let pitImg = null, handImg = null;
     let seedImgs = [];
     function loadImages(callback) {
       let loaded = 0;
       const total = 2;
       function checkLoaded() { if (++loaded === total) loadSeedImages(callback); }
-
       pitImg = new Image();
       pitImg.src = "images/pit.png";
       pitImg.onload = function() {
@@ -210,7 +209,6 @@
           checkLoaded();
         });
       };
-
       handImg = new Image();
       handImg.src = "images/hand.png";
       handImg.onload = function() {
@@ -234,11 +232,11 @@
               callback();
             }
           });
-        }
+        };
       }
     }
 
-    // Board Initialization
+    // Board initialization: fill pits (except stores) with 4 seeds each.
     function initBoard() {
       board = [];
       for (let i = 0; i < 14; i++) {
@@ -254,7 +252,7 @@
       }
     }
 
-    // Seed Drawing Helper
+    // Seed drawing helper: get offsets for up to 6 seeds
     function getSeedOffsets(count) {
       let offsets = [];
       if (count === 1) {
@@ -269,7 +267,7 @@
       return offsets;
     }
 
-    // Hand Animation: Moves hand image from one point to another.
+    // Hand animation: animate hand from one position to another over given duration.
     let handPos = { x: 0, y: 0 };
     let handVisible = false;
     function animateHand(from, to, duration, callback) {
@@ -290,19 +288,17 @@
       requestAnimationFrame(step);
     }
 
-    // Capture Animation:
-    // 1. Pause at the landing pit (simulate dropping/picking up last seed).
-    // 2. Animate hand moving from landing pit to opposite pit (1000ms).
-    // 3. Pause at opposite pit (simulate picking up seeds).
-    // 4. Animate hand moving from opposite pit to store (1000ms).
+    // Capture animation:
+    // Step 1: After last seed is dropped, pause 500ms (simulate drop & pick up).
+    // Step 2: Animate hand (1000ms) from landing pit to opposite pit.
+    // Step 3: Pause 500ms (simulate picking up opponent’s seeds).
+    // Step 4: Animate hand (1000ms) from opposite pit to store.
     function captureAnimation(lastPit, oppositePit, storeIndex, callback) {
       const landingPos = pitPositions[lastPit];
       const oppositePos = pitPositions[oppositePit];
       const storePos = pitPositions[storeIndex];
-      // Pause 500ms at landing pit
       setTimeout(() => {
         animateHand(landingPos, oppositePos, 1000, () => {
-          // Pause 500ms at opposite pit
           setTimeout(() => {
             animateHand(oppositePos, storePos, 1000, () => {
               callback();
@@ -312,7 +308,7 @@
       }, 500);
     }
 
-    // Move Animation (with Capture Animation)
+    // Move animation (with capture animation integrated)
     function animateMove(pitIndex, finishCallback) {
       isAnimating = true;
       let stones = board[pitIndex].length;
@@ -333,15 +329,15 @@
       function animateNext(i) {
         if (i >= destinations.length) {
           let lastIndex = destinations[destinations.length - 1];
-          // Check capture: if last stone lands in an empty pit on player's side.
+          // Check capture rule: if last stone lands in an empty pit on player's side and opposite pit isn't empty.
           if (isOwnPit(lastIndex, currentPlayer) && board[lastIndex].length === 1) {
             let opposite = 12 - lastIndex;
             if (board[opposite].length > 0) {
-              // Save captured seeds from both pits.
+              // Prevent extra turn on capture.
               let captured = board[opposite].concat(board[lastIndex]);
               board[opposite] = [];
               board[lastIndex] = [];
-              captureAnimation(lastIndex, opposite, (currentPlayer === "south" ? 6 : 13), function(){
+              captureAnimation(lastIndex, opposite, (currentPlayer === "south" ? 6 : 13), function() {
                 if (currentPlayer === "south") {
                   board[6] = board[6].concat(captured);
                 } else {
@@ -350,9 +346,8 @@
                 handVisible = false;
                 redraw();
                 isAnimating = false;
-                let extra = (currentPlayer === "south" && lastIndex === 6) ||
-                            (currentPlayer === "north" && lastIndex === 13);
-                finishCallback(extra);
+                // No extra turn granted when capture occurs.
+                finishCallback(false);
               });
               return;
             }
@@ -368,7 +363,7 @@
         let dest = destinations[i];
         let fromPos = { x: pitPositions[currentIndex].cx, y: pitPositions[currentIndex].cy };
         let toPos = { x: pitPositions[dest].cx, y: pitPositions[dest].cy };
-        animateHand(fromPos, toPos, 500, function(){
+        animateHand(fromPos, toPos, 500, function() {
           board[dest].push(movingSeeds[i]);
           currentIndex = dest;
           redraw();
@@ -378,7 +373,7 @@
       animateNext(0);
     }
 
-    // Drawing the Board, Seeds, and Counters
+    // Drawing the board, seeds, and counters.
     function drawBoard() {
       ctx.clearRect(0, 0, WIDTH, HEIGHT);
       ctx.fillStyle = "#f5deb3";
@@ -438,7 +433,7 @@
       drawBoard();
     }
 
-    // Game Logic: Player and AI Moves
+    // Game logic: determine if a pit belongs to current player.
     function isOwnPit(pitIndex, player) {
       if (player === "south") {
         return pitIndex >= 0 && pitIndex <= 5;
@@ -461,6 +456,7 @@
           showGameOver();
           return;
         }
+        // If no extra turn, swap current player.
         if (!extraTurn) {
           currentPlayer = (currentPlayer === "south") ? "north" : "south";
         }
@@ -513,7 +509,6 @@
     function evaluateState(state, player) {
       return (player === "south") ? state[6] - state[13] : state[13] - state[6];
     }
-    
     function getLegalMoves() {
       let moves = [];
       if (currentPlayer === "south") {
@@ -594,9 +589,13 @@
 
     function checkGameOver() {
       let southEmpty = true;
-      for (let i = 0; i < 6; i++) { if (board[i].length > 0) { southEmpty = false; break; } }
+      for (let i = 0; i < 6; i++) {
+        if (board[i].length > 0) { southEmpty = false; break; }
+      }
       let northEmpty = true;
-      for (let i = 7; i <= 12; i++) { if (board[i].length > 0) { northEmpty = false; break; } }
+      for (let i = 7; i <= 12; i++) {
+        if (board[i].length > 0) { northEmpty = false; break; }
+      }
       if (southEmpty || northEmpty) {
         if (!southEmpty) {
           for (let i = 0; i < 6; i++) { board[6] = board[6].concat(board[i]); board[i] = []; }
@@ -615,7 +614,7 @@
       return "tie";
     }
 
-    // Input Handling
+    // Input handling
     canvas.addEventListener("mousedown", function(e) {
       if (gameState !== "playing" || isAnimating) return;
       if (currentPlayer !== playerSide) return;
@@ -646,7 +645,7 @@
       }
     });
 
-    // Screen Management
+    // Screen management
     function hideAllScreens() {
       menuScreen.style.display = "none";
       instructionsScreen.style.display = "none";
@@ -679,7 +678,7 @@
       gameOverScreen.style.display = "flex";
     }
 
-    // Main Loop
+    // Main loop
     function mainLoop() {
       if (gameState === "playing") {
         if (currentPlayer !== playerSide && !isAnimating && !aiThinking) {
@@ -693,7 +692,7 @@
       requestAnimationFrame(mainLoop);
     }
 
-    // Button Handlers
+    // Button handlers
     document.getElementById("newGameBtn").onclick = function() { showSideChoice(); };
     document.getElementById("instructionsBtn").onclick = function() { showInstructions(); };
     document.getElementById("southSideBtn").onclick = function() {
@@ -727,7 +726,7 @@
     };
     document.getElementById("gameOverNewGameBtn").onclick = function() { showSideChoice(); };
 
-    // Start Everything
+    // Start everything
     computePitPositions();
     loadImages(function(){
       initBoard();
