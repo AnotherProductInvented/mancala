@@ -93,7 +93,7 @@
     <!-- SIDE CHOICE SCREEN -->
     <div id="sideScreen" class="overlayScreen">
       <p>Choose Your Side:</p>
-      <!-- Swapped order: North appears above South -->
+      <!-- Swapped order: North above South -->
       <button id="northSideBtn">North [N]</button>
       <button id="southSideBtn">South [S]</button>
       <p>You can also press N or S on your keyboard.</p>
@@ -164,7 +164,7 @@
     let currentPlayer = null;  // whose turn: "south" or "north"
 
     // The board: indices 0-5 (South pits), 6 (South store), 7-12 (North pits), 13 (North store).
-    // Each pit is an array of seed objects; stores are arrays as well.
+    // Each pit holds an array of seed objects.
     let board = [];
     let isAnimating = false;
     let aiThinking = false;
@@ -174,7 +174,7 @@
     /*--------------------------
       Pit Geometry
     ---------------------------*/
-    const pitPositions = {}; // Map pit index -> {cx, cy, ...}
+    const pitPositions = {};
     const marginX = 120;
     const marginY = 50;
     const pitRadius = 40;
@@ -188,9 +188,8 @@
         let cy = HEIGHT - marginY;
         pitPositions[i] = { cx, cy, radius: pitRadius, type: "pit" };
       }
-      // North pits: moved down so their counters are visible.
-      const northY = marginY + pitRadius + 20; // adjusted y value
-      // North pits (indices 7–12) in reverse order (so pit 12 is leftmost)
+      // North pits: move them down so counters show.
+      const northY = marginY + pitRadius + 20;
       for (let i = 7; i < 13; i++) {
         let idx = i - 7;
         let cx = marginX + spacing/2 + (5 - idx) * spacing;
@@ -205,13 +204,12 @@
 
     /*--------------------------
       Image Loading
-      Files: pit.png, hand.png, blueseed.png, redseed.png, greenseed.png, brownseed.png
     ---------------------------*/
     let pitImg = null, handImg = null;
-    let seedImgs = []; // Array for seed images.
+    let seedImgs = [];
     function loadImages(callback) {
       let loaded = 0;
-      const total = 2; // pit and hand images
+      const total = 2;
       function checkLoaded() { if (++loaded === total) loadSeedImages(callback); }
 
       pitImg = new Image();
@@ -252,13 +250,12 @@
 
     /*--------------------------
       Board Initialization
-      Each pit (except stores 6 and 13) gets 4 seeds at game start.
     ---------------------------*/
     function initBoard() {
       board = [];
       for (let i = 0; i < 14; i++) {
         if (i === 6 || i === 13) {
-          board[i] = []; // stores start empty
+          board[i] = [];
         } else {
           board[i] = [];
           for (let j = 0; j < 4; j++) {
@@ -271,7 +268,6 @@
 
     /*--------------------------
       Seed Drawing Helper
-      For ≤6 seeds, return offsets on a small circle (radius 5) centered in the pit.
     ---------------------------*/
     function getSeedOffsets(count) {
       let offsets = [];
@@ -288,7 +284,7 @@
     }
 
     /*--------------------------
-      Animation Variables & Hand Animation
+      Animation: Hand Movement
     ---------------------------*/
     let handPos = { x: 0, y: 0 };
     let handVisible = false;
@@ -311,21 +307,19 @@
     }
 
     /*--------------------------
-      Capture Animation
-      When the last seed lands in an empty pit on your side and the opposite pit has seeds,
-      the hand picks up the stone in your pit, moves to the opposite pit to collect seeds,
-      and then carries them to your store.
+      Animation: Capture Move
+      Animates the hand moving from the landing pit to the opposite pit, then to the store.
     ---------------------------*/
-    function animateCapture(lastPitIndex, oppositePitIndex, storeIndex, capturedSeeds, callback) {
-      const lastPos = pitPositions[lastPitIndex];
-      const oppositePos = pitPositions[oppositePitIndex];
+    function animateCapture(lastPit, oppositePit, storeIndex, callback) {
+      const lastPos = pitPositions[lastPit];
+      const oppositePos = pitPositions[oppositePit];
       const storePos = pitPositions[storeIndex];
-      // Pause briefly at last pit to simulate "picking up" the seed.
+      // Pause briefly at the landing pit.
       setTimeout(function(){
         animateHand(lastPos, oppositePos, 500, function(){
-          // Pause to simulate picking up seeds from the opposite pit.
+          // Pause at the opposite pit.
           setTimeout(function(){
-            animateHand(oppositePos, storePos, 500, function(){
+            animateHand(oppositePos, pitPositions[storeIndex], 500, function(){
               callback();
             });
           }, 200);
@@ -334,9 +328,7 @@
     }
 
     /*--------------------------
-      Move Animation
-      Moves seeds one-by-one from the selected pit.
-      The moving seeds keep their fixed color.
+      Move Animation (with Capture Animation)
     ---------------------------*/
     function animateMove(pitIndex, finishCallback) {
       isAnimating = true;
@@ -358,16 +350,17 @@
       function animateNext(i) {
         if (i >= destinations.length) {
           let lastIndex = destinations[destinations.length - 1];
-          // If capture rule applies: last stone landed in an empty pit on player's side
+          // Capture rule: if last seed lands in an empty pit on player's side...
           if (isOwnPit(lastIndex, currentPlayer) && board[lastIndex].length === 1) {
             let opposite = 12 - lastIndex;
             if (board[opposite].length > 0) {
+              // Save captured seeds (from both pits)
               let captured = board[opposite].concat(board[lastIndex]);
-              // Clear both pits for capture animation.
+              // Clear the pits
               board[opposite] = [];
               board[lastIndex] = [];
-              // Animate capture: hand moves from last pit -> opposite pit -> store.
-              animateCapture(lastIndex, opposite, (currentPlayer === "south" ? 6 : 13), captured, function(){
+              // Animate capture: hand goes from last pit -> opposite pit -> store.
+              animateCapture(lastIndex, opposite, (currentPlayer === "south" ? 6 : 13), function(){
                 if (currentPlayer === "south") {
                   board[6] = board[6].concat(captured);
                 } else {
@@ -456,7 +449,6 @@
           ctx.fillText(count, pos.cx, pos.cy - pos.height/2 - 10);
         }
       }
-      // Do not draw duplicate bottom bar text.
       if (handVisible && handImg) {
         let handSize = 40;
         ctx.drawImage(handImg, handPos.x - handSize/2, handPos.y - handSize/2, handSize, handSize);
