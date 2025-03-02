@@ -514,6 +514,19 @@
     function evaluateState(state, player) {
       return (player === "south") ? state[6] - state[13] : state[13] - state[6];
     }
+    function getLegalMoves() {
+  let moves = [];
+  if (currentPlayer === "south") {
+    for (let i = 0; i < 6; i++) {
+      if (board[i].length > 0) moves.push(i);
+    }
+  } else if (currentPlayer === "north") {
+    for (let i = 7; i <= 12; i++) {
+      if (board[i].length > 0) moves.push(i);
+    }
+  }
+  return moves;
+}
     function minimaxDecision(state, player, depth) {
       function maxValue(state, player, depth) {
         let legal = getLegalMovesForState(state, player);
