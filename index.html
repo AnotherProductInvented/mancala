@@ -290,15 +290,14 @@
       requestAnimationFrame(step);
     }
 
-    // Capture Animation: When capture condition applies, animate hand from landing pit -> opposite pit -> store.
+    // Capture Animation: When capture applies, animate hand from landing pit -> opposite pit -> store.
+    // Slowed down to 1000ms per leg.
     function animateCapture(lastPit, oppositePit, storeIndex, callback) {
       const landingPos = pitPositions[lastPit];
       const oppositePos = pitPositions[oppositePit];
       const storePos = pitPositions[storeIndex];
-      console.log("Capture triggered: moving from pit", lastPit, "to opposite pit", oppositePit, "to store", storeIndex);
-      // Animate directly from landing pit to opposite pit, then to store.
-      animateHand(landingPos, oppositePos, 500, function(){
-        animateHand(oppositePos, storePos, 500, function(){
+      animateHand(landingPos, oppositePos, 1000, function(){
+        animateHand(oppositePos, storePos, 1000, function(){
           callback();
         });
       });
@@ -325,11 +324,10 @@
       function animateNext(i) {
         if (i >= destinations.length) {
           let lastIndex = destinations[destinations.length - 1];
-          // Check capture: last stone landed in an empty pit on player's side.
+          // Check capture: if last stone landed in an empty pit on player's side.
           if (isOwnPit(lastIndex, currentPlayer) && board[lastIndex].length === 1) {
             let opposite = 12 - lastIndex;
             if (board[opposite].length > 0) {
-              console.log("Performing capture at pit", lastIndex, "and opposite pit", opposite);
               let captured = board[opposite].concat(board[lastIndex]);
               board[opposite] = [];
               board[lastIndex] = [];
