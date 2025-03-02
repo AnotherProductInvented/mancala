@@ -187,11 +187,13 @@
         let cy = HEIGHT - marginY;
         pitPositions[i] = { cx, cy, radius: pitRadius, type: "pit" };
       }
+      // North pits: move down so their counters are visible.
+      const northY = marginY + pitRadius + 20; // adjusted y value
       // North pits (indices 7–12) in reverse order (so pit 12 is leftmost)
       for (let i = 7; i < 13; i++) {
         let idx = i - 7;
         let cx = marginX + spacing/2 + (5 - idx) * spacing;
-        let cy = marginY;
+        let cy = northY;
         pitPositions[i] = { cx, cy, radius: pitRadius, type: "pit" };
       }
       // South store (index 6) on right
@@ -412,12 +414,11 @@
           let offsets = getSeedOffsets(seedsToDraw);
           let seedSize = 16;
           for (let i = 0; i < seedsToDraw; i++) {
-            // Use the fixed seed object (do not randomize per draw)
             let seedImg = board[key][i];
             ctx.drawImage(seedImg, pos.cx + offsets[i].x - seedSize/2, pos.cy + offsets[i].y - seedSize/2, seedSize, seedSize);
           }
         }
-        // Draw the counter (for pits: above the pit; for stores: above the top edge)
+        // Draw the counter above pits or above stores.
         ctx.fillStyle = "#000";
         ctx.font = "bold 16px sans-serif";
         ctx.textAlign = "center";
@@ -427,13 +428,8 @@
           ctx.fillText(count, pos.cx, pos.cy - pos.height/2 - 10);
         }
       }
-      // Draw bottom bar text.
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, HEIGHT - 30, WIDTH, 30);
-      ctx.fillStyle = "#000";
-      ctx.font = "16px sans-serif";
-      ctx.textAlign = "left";
-      ctx.fillText("Click a pit to move. Press [M] for menu.", 10, HEIGHT - 10);
+      // Note: Removed drawing of bottom bar text from canvas so it doesn't duplicate the HTML element.
+      
       // Draw hand if visible.
       if (handVisible && handImg) {
         let handSize = 40;
@@ -445,17 +441,17 @@
       drawBoard();
     }
     
-        /*--------------------------
+    /*--------------------------
       Game Logic: Player and AI Moves
     ---------------------------*/
     function isOwnPit(pitIndex, player) {
-  if (player === "south") {
-    return pitIndex >= 0 && pitIndex <= 5;  // South player owns pits 0 to 5
-  } else if (player === "north") {
-    return pitIndex >= 7 && pitIndex <= 12; // North player owns pits 7 to 12
-  }
-  return false;
-}
+      if (player === "south") {
+        return pitIndex >= 0 && pitIndex <= 5;  // South player owns pits 0 to 5
+      } else if (player === "north") {
+        return pitIndex >= 7 && pitIndex <= 12; // North player owns pits 7 to 12
+      }
+      return false;
+    }
 
     function playerMakeMove(pitIndex) {
       if (isAnimating) return;
@@ -525,18 +521,18 @@
     }
     
     function getLegalMoves() {
-  let moves = [];
-  if (currentPlayer === "south") {
-    for (let i = 0; i < 6; i++) {
-      if (board[i].length > 0) moves.push(i);
+      let moves = [];
+      if (currentPlayer === "south") {
+        for (let i = 0; i < 6; i++) {
+          if (board[i].length > 0) moves.push(i);
+        }
+      } else if (currentPlayer === "north") {
+        for (let i = 7; i <= 12; i++) {
+          if (board[i].length > 0) moves.push(i);
+        }
+      }
+      return moves;
     }
-  } else if (currentPlayer === "north") {
-    for (let i = 7; i <= 12; i++) {
-      if (board[i].length > 0) moves.push(i);
-    }
-  }
-  return moves;
-}
     function minimaxDecision(state, player, depth) {
       function maxValue(state, player, depth) {
         let legal = getLegalMovesForState(state, player);
