@@ -448,14 +448,6 @@
         /*--------------------------
       Game Logic: Player and AI Moves
     ---------------------------*/
-function isOwnPit(pitIndex, player) {
-  if (player === "south") {
-    return pitIndex >= 0 && pitIndex <= 5;  // South player owns pits 0 to 5
-  } else if (player === "north") {
-    return pitIndex >= 7 && pitIndex <= 12; // North player owns pits 7 to 12
-  }
-  return false;
-}
     function playerMakeMove(pitIndex) {
       if (isAnimating) return;
       if (!isOwnPit(pitIndex, currentPlayer)) return;
