@@ -93,9 +93,10 @@
     <!-- SIDE CHOICE SCREEN -->
     <div id="sideScreen" class="overlayScreen">
       <p>Choose Your Side:</p>
-      <button id="southSideBtn">South [S]</button>
+      <!-- Swapped order: North button is now above South -->
       <button id="northSideBtn">North [N]</button>
-      <p>You can also press S or N on your keyboard.</p>
+      <button id="southSideBtn">South [S]</button>
+      <p>You can also press N or S on your keyboard.</p>
     </div>
     <!-- DIFFICULTY SCREEN -->
     <div id="difficultyScreen" class="overlayScreen">
@@ -645,8 +646,8 @@
     document.addEventListener("keydown", function(e) {
       let key = e.key.toLowerCase();
       if (gameState === "side_choice") {
-        if (key === "s") document.getElementById("southSideBtn").click();
         if (key === "n") document.getElementById("northSideBtn").click();
+        if (key === "s") document.getElementById("southSideBtn").click();
       } else if (gameState === "difficulty_choice") {
         if (key === "e") document.getElementById("easyBtn").click();
         if (key === "m") document.getElementById("mediumBtn").click();
