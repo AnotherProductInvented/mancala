@@ -123,7 +123,7 @@
   <img id="logo" src="logo.png" alt="Logo">
 
   <script>
-    // Helper: Remove White Background from images
+    // Helper: Remove white background from images
     function removeWhiteBackground(image, callback) {
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = image.width;
@@ -267,7 +267,7 @@
       return offsets;
     }
 
-    // Hand Animation: Moves hand image from one point to another.
+    // Hand Animation: smoothly animate the hand from one position to another.
     let handPos = { x: 0, y: 0 };
     let handVisible = false;
     function animateHand(from, to, duration, callback) {
@@ -289,14 +289,18 @@
     }
 
     // Capture Animation:
-    // Step 1: Pause 1000ms at the landing pit to simulate dropping and picking up.
-    // Step 2: Animate hand from landing pit to opposite pit over 2000ms.
-    // Step 3: Pause 1000ms at the opposite pit.
-    // Step 4: Animate hand from opposite pit to store over 2000ms.
+    // 1. Pause at landing pit for 1000ms (simulate dropping and picking up).
+    // 2. Animate hand from landing pit to opposite pit over 2000ms.
+    // 3. Pause at opposite pit for 1000ms.
+    // 4. Animate hand from opposite pit to store over 2000ms.
     function captureAnimation(lastPit, oppositePit, storeIndex, callback) {
-      const landingPos = pitPositions[lastPit];
-      const oppositePos = pitPositions[oppositePit];
-      const storePos = pitPositions[storeIndex];
+      const landingPos = { x: pitPositions[lastPit].cx, y: pitPositions[lastPit].cy };
+      const oppositePos = { x: pitPositions[oppositePit].cx, y: pitPositions[oppositePit].cy };
+      const storePos = { x: pitPositions[storeIndex].cx, y: pitPositions[storeIndex].cy };
+      // Ensure the hand is at the landing pit:
+      handPos.x = landingPos.x;
+      handPos.y = landingPos.y;
+      redraw();
       setTimeout(() => {
         animateHand(landingPos, oppositePos, 2000, () => {
           setTimeout(() => {
@@ -308,7 +312,7 @@
       }, 1000);
     }
 
-    // Move Animation (with Capture Animation)
+    // Move Animation (with integrated capture animation)
     function animateMove(pitIndex, finishCallback) {
       isAnimating = true;
       let stones = board[pitIndex].length;
@@ -329,7 +333,7 @@
       function animateNext(i) {
         if (i >= destinations.length) {
           let lastIndex = destinations[destinations.length - 1];
-          // Check capture rule: if last stone lands in an empty pit on player's side and opposite pit is not empty.
+          // Check capture: if last stone lands in an empty pit on player's side and opposite pit isn't empty.
           if (isOwnPit(lastIndex, currentPlayer) && board[lastIndex].length === 1) {
             let opposite = 12 - lastIndex;
             if (board[opposite].length > 0) {
@@ -345,7 +349,7 @@
                 handVisible = false;
                 redraw();
                 isAnimating = false;
-                // No extra turn granted on capture.
+                // No extra turn is granted when a capture occurs.
                 finishCallback(false);
               });
               return;
@@ -432,7 +436,7 @@
       drawBoard();
     }
 
-    // Game Logic: Check if pit belongs to current player.
+    // Game Logic: Determine if a pit belongs to the current player.
     function isOwnPit(pitIndex, player) {
       if (player === "south") {
         return pitIndex >= 0 && pitIndex <= 5;
@@ -455,7 +459,7 @@
           showGameOver();
           return;
         }
-        // Only grant extra turn if the move ended in your store (and not a capture).
+        // Grant extra turn only if the move ended in the store (and not during capture).
         if (!extraTurn) {
           currentPlayer = (currentPlayer === "south") ? "north" : "south";
         }
