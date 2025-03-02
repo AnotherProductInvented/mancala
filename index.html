@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Another Product Invented Mancala</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      margin: 1rem 0 0.5rem;
+      text-align: center;
+      line-height: 1.2;
+    }
+    #gameContainer {
+      position: relative;
+      width: 720px; /* same as canvas internal width */
+      max-width: 100%;
+    }
+    canvas {
+      display: block;
+      background: #f5deb3;
+      width: 100%;
+      height: auto;
+    }
+    .overlayScreen {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      display: none; /* shown/hidden dynamically */
+      background: rgba(255,255,255,0.95);
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      text-align: center;
+      z-index: 5;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    button {
+      font-size: 18px;
+      margin: 10px;
+      padding: 10px 20px;
+      cursor: pointer;
+    }
+    /* Logo placed in bottom-right corner */
+    #logo {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      max-width: 100px;
+      z-index: 2000;
+    }
+    /* Bottom bar (instructions) */
+    #bottomBar {
+      width: 720px;
+      max-width: 100%;
+      background: #fff;
+      border-top: 1px solid #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 10px;
+      box-sizing: border-box;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header with two-line title -->
+  <h1>Another Product Invented<br>Mancala</h1>
+
+  <div id="gameContainer">
+    <!-- MENU SCREEN -->
+    <div id="menuScreen" class="overlayScreen" style="display: flex;">
+      <button id="newGameBtn">New Game</button>
+      <button id="instructionsBtn">Instructions</button>
+    </div>
+
+    <!-- INSTRUCTIONS SCREEN -->
+    <div id="instructionsScreen" class="overlayScreen">
+      <h2>How to Play Mancala</h2>
+      <p>
+        The objective is to collect more stones than your opponent.<br>
+        On your turn, click one of your pits (on your side) to pick up all its stones and distribute them counterclockwise.<br>
+        Stones are dropped one by one in the following pits (skipping your opponent’s store).<br>
+        If your last stone lands in your store, you get another turn.<br>
+        If it lands in an empty pit on your side, you capture that stone along with any stones in the opposite pit.<br>
+        The game ends when one side’s pits are empty. The remaining stones are collected, and the winner is the one with the most stones.<br>
+        Press [M] to return to the Main Menu.
+      </p>
+    </div>
+
+    <!-- SIDE CHOICE SCREEN -->
+    <div id="sideScreen" class="overlayScreen">
+      <p>Choose Your Side:</p>
+      <button id="southSideBtn">South [S]</button>
+      <button id="northSideBtn">North [N]</button>
+      <p>You can also press S or N on your keyboard.</p>
+    </div>
+
+    <!-- DIFFICULTY SCREEN -->
+    <div id="difficultyScreen" class="overlayScreen">
+      <p>Select Difficulty:</p>
+      <button id="easyBtn">Easy [E]</button>
+      <button id="mediumBtn">Medium [M]</button>
+      <button id="hardBtn">Hard [H]</button>
+      <p>You can also press E, M, or H on your keyboard.</p>
+    </div>
+
+    <!-- GAME OVER SCREEN -->
+    <div id="gameOverScreen" class="overlayScreen">
+      <h2 id="gameOverText"></h2>
+      <button id="gameOverNewGameBtn">New Game</button>
+      <p>Press [M] to return to the Main Menu.</p>
+    </div>
+
+    <!-- Mancala Game Canvas -->
+    <canvas id="mancalaCanvas" width="720" height="500"></canvas>
+    <!-- Optional bottom bar for in-game instructions -->
+    <div id="bottomBar">
+      <span>Click a pit to move. Press [M] for menu.</span>
+    </div>
+  </div>
+
+  <!-- Logo placed in bottom-right corner -->
+  <img id="logo" src="logo.png" alt="Logo">
+
+  <script>
+    /************ Global Variables & State ************/
+    const canvas = document.getElementById("mancalaCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const menuScreen = document.getElementById("menuScreen");
+    const instructionsScreen = document.getElementById("instructionsScreen");
+    const sideScreen = document.getElementById("sideScreen");
+    const difficultyScreen = document.getElementById("difficultyScreen");
+    const gameOverScreen = document.getElementById("gameOverScreen");
+
+    let gameState = "menu";  // states: menu, instructions, side_choice, difficulty_choice, playing, game_over
+    let playerSide = null;   // "south" or "north" chosen by human
+    let difficulty = null;   // "easy", "medium", "hard"
+    let currentPlayer = null;  // "south" or "north" (whose turn it is)
+    let board = [];  // Array of 14 numbers representing pits:
+                     // indices 0-5: South pits, index 6: South store,
+                     // indices 7-12: North pits, index 13: North store.
+    let aiThinking = false;
+
+    const WIDTH = 720, HEIGHT = 500;
+
+    // Pit positions for drawing the board
+    const pitPositions = {}; // will map pit index -> {cx, cy, radius, type} for small pits or {cx,cy,width,height,type} for stores.
+    const marginX = 120;
+    const marginY = 50;
+    const pitRadius = 40;
+    const storeWidth = 80, storeHeight = 200;
+
+    function computePitPositions() {
+      // Spacing between pits in a row.
+      let spacing = (WIDTH - 2 * marginX) / 6;
+      // South pits (indices 0-5): arranged left-to-right along the bottom.
+      for (let i = 0; i < 6; i++) {
+        let cx = marginX + spacing/2 + i * spacing;
+        let cy = HEIGHT - marginY;
+        pitPositions[i] = { cx: cx, cy: cy, radius: pitRadius, type: "pit" };
+      }
+      // North pits (indices 7-12): arranged in reverse order so that pit 12 is leftmost.
+      for (let i = 7; i < 13; i++) {
+        let idx = i - 7; // 0 to 5
+        // Reverse order: left-to-right display uses (5 - idx)
+        let cx = marginX + spacing/2 + (5 - idx) * spacing;
+        let cy = marginY;
+        pitPositions[i] = { cx: cx, cy: cy, radius: pitRadius, type: "pit" };
+      }
+      // South store (index 6) on the right.
+      pitPositions[6] = { cx: WIDTH - marginX/2, cy: HEIGHT/2, width: storeWidth, height: storeHeight, type: "store" };
+      // North store (index 13) on the left.
+      pitPositions[13] = { cx: marginX/2, cy: HEIGHT/2, width: storeWidth, height: storeHeight, type: "store" };
+    }
+
+    // Initialize board: 4 stones in each pit (except the stores, which start at 0)
+    function initBoard() {
+      board = [];
+      for (let i = 0; i < 14; i++) {
+        if (i === 6 || i === 13) board[i] = 0;
+        else board[i] = 4;
+      }
+    }
+
+    // Returns true if the given pit index belongs to the specified player.
+    function isOwnPit(index, player) {
+      if (player === "south") return index >= 0 && index <= 5;
+      if (player === "north") return index >= 7 && index <= 12;
+      return false;
+    }
+
+    // Get legal moves for current player (pit indices on their side with at least one stone)
+    function getLegalMoves() {
+      let moves = [];
+      if (currentPlayer === "south") {
+        for (let i = 0; i < 6; i++) { if (board[i] > 0) moves.push(i); }
+      } else if (currentPlayer === "north") {
+        for (let i = 7; i <= 12; i++) { if (board[i] > 0) moves.push(i); }
+      }
+      return moves;
+    }
+
+    // Execute a move from the chosen pit index.
+    // Returns true if the last stone lands in the player's store (granting an extra turn).
+    function makeMove(pitIndex) {
+      let stones = board[pitIndex];
+      board[pitIndex] = 0;
+      let index = pitIndex;
+      while (stones > 0) {
+        index = (index + 1) % 14;
+        // Skip opponent's store.
+        if (currentPlayer === "south" && index === 13) continue;
+        if (currentPlayer === "north" && index === 6) continue;
+        board[index]++;
+        stones--;
+      }
+      // Extra turn if last stone lands in own store.
+      if ((currentPlayer === "south" && index === 6) || (currentPlayer === "north" && index === 13)) {
+        return true;
+      }
+      // Capture rule: if last stone lands in an empty pit on player's side and the opposite pit has stones.
+      if (isOwnPit(index, currentPlayer) && board[index] === 1) {
+        let opposite = 12 - index; // Mapping: 0↔12, 1↔11, 2↔10, 3↔9, 4↔8, 5↔7.
+        if (board[opposite] > 0) {
+          let captured = board[opposite] + board[index];
+          board[opposite] = 0;
+          board[index] = 0;
+          if (currentPlayer === "south") board[6] += captured;
+          else board[13] += captured;
+        }
+      }
+      return false;
+    }
+
+    // Check if the game is over: one side’s pits are all empty.
+    function checkGameOver() {
+      let southEmpty = true;
+      for (let i = 0; i < 6; i++) { if (board[i] > 0) { southEmpty = false; break; } }
+      let northEmpty = true;
+      for (let i = 7; i <= 12; i++) { if (board[i] > 0) { northEmpty = false; break; } }
+      if (southEmpty || northEmpty) {
+        // Collect remaining stones.
+        if (!southEmpty) {
+          for (let i = 0; i < 6; i++) { board[6] += board[i]; board[i] = 0; }
+        }
+        if (!northEmpty) {
+          for (let i = 7; i <= 12; i++) { board[13] += board[i]; board[i] = 0; }
+        }
+        return true;
+      }
+      return false;
+    }
+
+    // Determine the winner: returns "south", "north", or "tie".
+    function getWinner() {
+      if (board[6] > board[13]) return "south";
+      if (board[13] > board[6]) return "north";
+      return "tie";
+    }
+
+    /************ Simple AI with 3 Difficulty Levels ************/
+    function aiMove() {
+      let legal = getLegalMoves();
+      if (legal.length === 0) return;
+      let chosen;
+      if (difficulty === "easy") {
+        chosen = legal[Math.floor(Math.random() * legal.length)];
+      } else if (difficulty === "medium") {
+        // Prefer moves that grant an extra turn.
+        for (let move of legal) {
+          let stones = board[move];
+          let index = move;
+          for (let i = 0; i < stones; i++) {
+            index = (index + 1) % 14;
+            if (currentPlayer === "north" && index === 6) continue;
+            if (currentPlayer === "south" && index === 13) continue;
+          }
+          if ((currentPlayer === "south" && index === 6) || (currentPlayer === "north" && index === 13)) {
+            chosen = move;
+            break;
+          }
+        }
+        if (chosen === undefined) chosen = legal[Math.floor(Math.random() * legal.length)];
+      } else if (difficulty === "hard") {
+        // A simple minimax (depth 4) based on the difference in store counts.
+        chosen = minimaxDecision(board.slice(), currentPlayer, 4).move;
+        if (chosen === null) chosen = legal[Math.floor(Math.random() * legal.length)];
+      } else {
+        chosen = legal[Math.floor(Math.random() * legal.length)];
+      }
+      let extra = makeMove(chosen);
+      redraw();
+      if (checkGameOver()) {
+        gameState = "game_over";
+        showGameOver();
+        return;
+      }
+      if (!extra) currentPlayer = (currentPlayer === "south") ? "north" : "south";
+    }
+
+    // Minimax evaluation: difference between own store and opponent's store.
+    function evaluateState(state, player) {
+      return (player === "south") ? state[6] - state[13] : state[13] - state[6];
+    }
+
+    // Get legal moves for a given state and player.
+    function getLegalMovesForState(state, player) {
+      let moves = [];
+      if (player === "south") {
+        for (let i = 0; i < 6; i++) { if (state[i] > 0) moves.push(i); }
+      } else {
+        for (let i = 7; i <= 12; i++) { if (state[i] > 0) moves.push(i); }
+      }
+      return moves;
+    }
+
+    // Simulate a move on a given state.
+    function simulateMove(state, move, player) {
+      let newState = state.slice();
+      let stones = newState[move];
+      newState[move] = 0;
+      let index = move;
+      while (stones > 0) {
+        index = (index + 1) % 14;
+        if (player === "south" && index === 13) continue;
+        if (player === "north" && index === 6) continue;
+        newState[index]++;
+        stones--;
+      }
+      // Capture rule.
+      function isOwn(idx, p) {
+        return (p === "south" && idx >= 0 && idx <= 5) || (p === "north" && idx >= 7 && idx <= 12);
+      }
+      if (isOwn(index, player) && newState[index] === 1) {
+        let opposite = 12 - index;
+        if (newState[opposite] > 0) {
+          let captured = newState[opposite] + newState[index];
+          newState[opposite] = 0;
+          newState[index] = 0;
+          if (player === "south") newState[6] += captured;
+          else newState[13] += captured;
+        }
+      }
+      let extra = (player === "south" && index === 6) || (player === "north" && index === 13);
+      return { state: newState, extra: extra };
+    }
+
+    // A simple minimax decision algorithm.
+    function minimaxDecision(state, player, depth) {
+      function maxValue(state, player, depth) {
+        let legal = getLegalMovesForState(state, player);
+        if (depth === 0 || legal.length === 0) return { value: evaluateState(state, player), move: null };
+        let best = { value: -Infinity, move: legal[0] };
+        for (let move of legal) {
+          let sim = simulateMove(state, move, player);
+          let nextPlayer = sim.extra ? player : (player === "south" ? "north" : "south");
+          let result;
+          if (nextPlayer === player) result = maxValue(sim.state, player, depth - 1);
+          else result = minValue(sim.state, player, depth - 1);
+          if (result.value > best.value) best = { value: result.value, move: move };
+        }
+        return best;
+      }
+      function minValue(state, player, depth) {
+        let opponent = (player === "south") ? "north" : "south";
+        let legal = getLegalMovesForState(state, opponent);
+        if (depth === 0 || legal.length === 0) return { value: evaluateState(state, player), move: null };
+        let best = { value: Infinity, move: null };
+        for (let move of legal) {
+          let sim = simulateMove(state, move, opponent);
+          let nextPlayer = sim.extra ? opponent : player;
+          let result;
+          if (nextPlayer === opponent) result = minValue(sim.state, player, depth - 1);
+          else result = maxValue(sim.state, player, depth - 1);
+          if (result.value < best.value) best = { value: result.value, move: move };
+        }
+        return best;
+      }
+      return maxValue(state, player, depth);
+    }
+
+    /************ Drawing Functions ************/
+    function drawBoard() {
+      ctx.clearRect(0, 0, WIDTH, HEIGHT);
+      // Board background.
+      ctx.fillStyle = "#f5deb3";
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+      // Draw pits.
+      for (let key in pitPositions) {
+        let pos = pitPositions[key];
+        if (pos.type === "pit") {
+          ctx.beginPath();
+          ctx.arc(pos.cx, pos.cy, pos.radius, 0, Math.PI * 2);
+          ctx.fillStyle = "#deb887";
+          ctx.fill();
+          ctx.strokeStyle = "#8b4513";
+          ctx.stroke();
+          // Stone count.
+          ctx.fillStyle = "#000";
+          ctx.font = "20px sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(board[key], pos.cx, pos.cy);
+        } else if (pos.type === "store") {
+          ctx.beginPath();
+          ctx.rect(pos.cx - pos.width/2, pos.cy - pos.height/2, pos.width, pos.height);
+          ctx.fillStyle = "#d2b48c";
+          ctx.fill();
+          ctx.strokeStyle = "#8b4513";
+          ctx.stroke();
+          ctx.fillStyle = "#000";
+          ctx.font = "24px sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(board[key], pos.cx, pos.cy);
+        }
+      }
+      // Bottom bar text.
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, HEIGHT - 30, WIDTH, 30);
+      ctx.fillStyle = "#000";
+      ctx.font = "16px sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText("Click a pit to move. Press [M] for menu.", 10, HEIGHT - 10);
+    }
+
+    function redraw() {
+      drawBoard();
+    }
+
+    /************ Screen Management ************/
+    function hideAllScreens() {
+      menuScreen.style.display = "none";
+      instructionsScreen.style.display = "none";
+      sideScreen.style.display = "none";
+      difficultyScreen.style.display = "none";
+      gameOverScreen.style.display = "none";
+    }
+    function showMenu() {
+      hideAllScreens();
+      gameState = "menu";
+      menuScreen.style.display = "flex";
+    }
+    function showInstructions() {
+      hideAllScreens();
+      gameState = "instructions";
+      instructionsScreen.style.display = "flex";
+    }
+    function showSideChoice() {
+      hideAllScreens();
+      gameState = "side_choice";
+      sideScreen.style.display = "flex";
+    }
+    function showDifficultyChoice() {
+      hideAllScreens();
+      gameState = "difficulty_choice";
+      difficultyScreen.style.display = "flex";
+    }
+    function showGameOver() {
+      hideAllScreens();
+      gameOverScreen.style.display = "flex";
+    }
+
+    /************ Input Handling ************/
+    canvas.addEventListener("mousedown", function(e) {
+      if (gameState !== "playing") return;
+      if (currentPlayer !== playerSide) return; // allow input only on player's turn
+      let rect = canvas.getBoundingClientRect();
+      let mx = e.clientX - rect.left;
+      let my = e.clientY - rect.top;
+      let legal = getLegalMoves();
+      for (let move of legal) {
+        let pos = pitPositions[move];
+        let dx = mx - pos.cx, dy = my - pos.cy;
+        if (Math.sqrt(dx*dx + dy*dy) < pos.radius) {
+          let extra = makeMove(move);
+          redraw();
+          if (checkGameOver()) {
+            gameState = "game_over";
+            let winner = getWinner();
+            let resultText = (winner === "tie") ? "It's a tie!" : (winner === playerSide ? "You win!" : "You lose!");
+            document.getElementById("gameOverText").innerHTML = "Game Over<br>" + resultText;
+            showGameOver();
+            return;
+          }
+          if (!extra) currentPlayer = (currentPlayer === "south") ? "north" : "south";
+          redraw();
+          return;
+        }
+      }
+    });
+
+    // Unified keyboard shortcuts.
+    document.addEventListener("keydown", function(e) {
+      let key = e.key.toLowerCase();
+      if (gameState === "side_choice") {
+        if (key === "s") document.getElementById("southSideBtn").click();
+        if (key === "n") document.getElementById("northSideBtn").click();
+      } else if (gameState === "difficulty_choice") {
+        if (key === "e") document.getElementById("easyBtn").click();
+        if (key === "m") document.getElementById("mediumBtn").click();
+        if (key === "h") document.getElementById("hardBtn").click();
+      } else if (["playing", "instructions", "game_over"].includes(gameState)) {
+        if (key === "m") showMenu();
+      }
+    });
+
+    /************ Main Loop ************/
+    function mainLoop() {
+      if (gameState === "playing") {
+        if (currentPlayer !== playerSide && !aiThinking) {
+          aiThinking = true;
+          setTimeout(() => {
+            aiMove();
+            aiThinking = false;
+            redraw();
+          }, 1000);
+        }
+      }
+      requestAnimationFrame(mainLoop);
+    }
+
+    /************ Button Handlers ************/
+    document.getElementById("newGameBtn").onclick = function() { showSideChoice(); };
+    document.getElementById("instructionsBtn").onclick = function() { showInstructions(); };
+    document.getElementById("southSideBtn").onclick = function() {
+      playerSide = "south";
+      currentPlayer = "south";
+      initBoard();
+      redraw();
+      showDifficultyChoice();
+    };
+    document.getElementById("northSideBtn").onclick = function() {
+      playerSide = "north";
+      currentPlayer = "north";
+      initBoard();
+      redraw();
+      showDifficultyChoice();
+    };
+    document.getElementById("easyBtn").onclick = function() {
+      difficulty = "easy";
+      hideAllScreens();
+      gameState = "playing";
+    };
+    document.getElementById("mediumBtn").onclick = function() {
+      difficulty = "medium";
+      hideAllScreens();
+      gameState = "playing";
+    };
+    document.getElementById("hardBtn").onclick = function() {
+      difficulty = "hard";
+      hideAllScreens();
+      gameState = "playing";
+    };
+    document.getElementById("gameOverNewGameBtn").onclick = function() { showSideChoice(); };
+
+    /************ Start Everything ************/
+    computePitPositions();
+    initBoard();
+    redraw();
+    mainLoop();
+  </script>
+</body>
+</html>
