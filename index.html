@@ -93,7 +93,7 @@
     <!-- SIDE CHOICE SCREEN -->
     <div id="sideScreen" class="overlayScreen">
       <p>Choose Your Side:</p>
-      <!-- North above South -->
+      <!-- North appears above South -->
       <button id="northSideBtn">North [N]</button>
       <button id="southSideBtn">South [S]</button>
       <p>You can also press N or S on your keyboard.</p>
@@ -123,7 +123,7 @@
   <img id="logo" src="logo.png" alt="Logo">
 
   <script>
-    // Helper: Remove White Background from images
+    // Helper: Remove White Background
     function removeWhiteBackground(image, callback) {
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = image.width;
@@ -290,17 +290,26 @@
       requestAnimationFrame(step);
     }
 
-    // Capture Animation: When capture applies, animate hand from landing pit -> opposite pit -> store.
-    // Slowed down to 1000ms per leg.
-    function animateCapture(lastPit, oppositePit, storeIndex, callback) {
+    // Capture Animation:
+    // 1. Pause at the landing pit (simulate dropping/picking up last seed).
+    // 2. Animate hand moving from landing pit to opposite pit (1000ms).
+    // 3. Pause at opposite pit (simulate picking up seeds).
+    // 4. Animate hand moving from opposite pit to store (1000ms).
+    function captureAnimation(lastPit, oppositePit, storeIndex, callback) {
       const landingPos = pitPositions[lastPit];
       const oppositePos = pitPositions[oppositePit];
       const storePos = pitPositions[storeIndex];
-      animateHand(landingPos, oppositePos, 1000, function(){
-        animateHand(oppositePos, storePos, 1000, function(){
-          callback();
+      // Pause 500ms at landing pit
+      setTimeout(() => {
+        animateHand(landingPos, oppositePos, 1000, () => {
+          // Pause 500ms at opposite pit
+          setTimeout(() => {
+            animateHand(oppositePos, storePos, 1000, () => {
+              callback();
+            });
+          }, 500);
         });
-      });
+      }, 500);
     }
 
     // Move Animation (with Capture Animation)
@@ -324,14 +333,15 @@
       function animateNext(i) {
         if (i >= destinations.length) {
           let lastIndex = destinations[destinations.length - 1];
-          // Check capture: if last stone landed in an empty pit on player's side.
+          // Check capture: if last stone lands in an empty pit on player's side.
           if (isOwnPit(lastIndex, currentPlayer) && board[lastIndex].length === 1) {
             let opposite = 12 - lastIndex;
             if (board[opposite].length > 0) {
+              // Save captured seeds from both pits.
               let captured = board[opposite].concat(board[lastIndex]);
               board[opposite] = [];
               board[lastIndex] = [];
-              animateCapture(lastIndex, opposite, (currentPlayer === "south" ? 6 : 13), function(){
+              captureAnimation(lastIndex, opposite, (currentPlayer === "south" ? 6 : 13), function(){
                 if (currentPlayer === "south") {
                   board[6] = board[6].concat(captured);
                 } else {
