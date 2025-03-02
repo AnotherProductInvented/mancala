@@ -516,6 +516,24 @@
     }
     function getLegalMoves() {
   let moves = [];
+  console.log("Current Player:", currentPlayer); // Debugging
+
+  if (currentPlayer === "south") {
+    for (let i = 0; i < 6; i++) {
+      if (board[i].length > 0) moves.push(i);
+    }
+  } else if (currentPlayer === "north") {
+    for (let i = 7; i <= 12; i++) {
+      if (board[i].length > 0) moves.push(i);
+    }
+  }
+
+  console.log("Legal Moves:", moves); // Debugging
+  return moves;
+}
+
+    function getLegalMoves() {
+  let moves = [];
   if (currentPlayer === "south") {
     for (let i = 0; i < 6; i++) {
       if (board[i].length > 0) moves.push(i);
