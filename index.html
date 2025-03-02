@@ -207,20 +207,34 @@
     }
 
     /************ Image Loading ************/
-    let pitImg = null, seedImg = null, handImg = null;
+    let pitImg = null, handImg = null;
+    let seedImgs = []; // Array to hold multiple seed images.
     function loadImages(callback) {
       let loaded = 0;
-      const total = 3;
-      function checkLoaded() { if (++loaded === total) callback(); }
+      const total = 2; // pit and hand images
+      function checkLoaded() { if (++loaded === total) loadSeedImages(callback); }
       pitImg = new Image();
       pitImg.src = "images/pit.png";
       pitImg.onload = checkLoaded;
-      seedImg = new Image();
-      seedImg.src = "images/seed.png";
-      seedImg.onload = checkLoaded;
       handImg = new Image();
       handImg.src = "images/hand.png";
       handImg.onload = checkLoaded;
+    }
+    // Load seed images from a predefined list of file names.
+    function loadSeedImages(callback) {
+      let seedFileNames = ["blueseed.png", "redseed.png", "greenseed.png"];  // add or adjust names as needed
+      let loadedSeeds = 0;
+      for (let i = 0; i < seedFileNames.length; i++) {
+        let img = new Image();
+        img.src = "images/" + seedFileNames[i];
+        img.onload = function() {
+          loadedSeeds++;
+          if (loadedSeeds === seedFileNames.length) {
+            callback();
+          }
+        }
+        seedImgs.push(img);
+      }
     }
 
     /************ Animation Variables ************/
@@ -340,16 +354,18 @@
         }
         // Draw seeds inside pit.
         let count = board[key];
-        if (seedImg && count > 0) {
-          let num = count;
-          // Arrange seeds in a circle.
-          let angleStep = (2 * Math.PI) / num;
-          let seedSize = 12; // size for the seed image
-          for (let i = 0; i < num; i++) {
+        let seedsToShow = Math.min(count, 6);  // display at most 6 seeds
+        if (seedImgs.length > 0 && seedsToShow > 0) {
+          let seedSize = 12; // adjust seed image size as needed
+          // Arrange seeds in a circle inside the pit.
+          let angleStep = (2 * Math.PI) / seedsToShow;
+          let offset = (pos.type === "pit") ? pos.radius * 0.6 : Math.min(pos.width, pos.height) * 0.3;
+          for (let i = 0; i < seedsToShow; i++) {
             let angle = i * angleStep;
-            let offset = pos.radius * 0.6;
             let sx = pos.cx + offset * Math.cos(angle) - seedSize / 2;
             let sy = pos.cy + offset * Math.sin(angle) - seedSize / 2;
+            // Randomly pick one seed image.
+            let seedImg = seedImgs[Math.floor(Math.random() * seedImgs.length)];
             ctx.drawImage(seedImg, sx, sy, seedSize, seedSize);
           }
         } else {
