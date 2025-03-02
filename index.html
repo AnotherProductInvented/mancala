@@ -71,7 +71,6 @@
 </head>
 <body>
   <h1>Another Product Invented<br>Mancala</h1>
-
   <div id="gameContainer">
     <!-- MENU SCREEN -->
     <div id="menuScreen" class="overlayScreen" style="display: flex;">
@@ -119,7 +118,6 @@
       <span>Click a pit to move. Press [M] for menu.</span>
     </div>
   </div>
-
   <!-- Logo -->
   <img id="logo" src="logo.png" alt="Logo">
 
@@ -133,8 +131,9 @@
       tempCtx.drawImage(image, 0, 0);
       const imgData = tempCtx.getImageData(0, 0, image.width, image.height);
       const data = imgData.data;
+      // Use threshold 240 instead of 250 for more aggressive white removal.
       for (let i = 0; i < data.length; i += 4) {
-        if (data[i] > 250 && data[i+1] > 250 && data[i+2] > 250) {
+        if (data[i] > 240 && data[i+1] > 240 && data[i+2] > 240) {
           data[i+3] = 0;
         }
       }
@@ -362,25 +361,39 @@
             ctx.stroke();
           }
         }
+        // Draw seeds for this pit/store.
         let count = board[key];
-        let seedsToShow = Math.min(count, 6);
-        if (seedImgs.length > 0 && seedsToShow > 0) {
-          let seedSize = 12;
-          let angleStep = (2 * Math.PI) / seedsToShow;
-          let offset = (pos.type === "pit") ? pos.radius * 0.6 : Math.min(pos.width, pos.height) * 0.3;
-          for (let i = 0; i < seedsToShow; i++) {
-            let angle = i * angleStep;
-            let sx = pos.cx + offset * Math.cos(angle) - seedSize / 2;
-            let sy = pos.cy + offset * Math.sin(angle) - seedSize / 2;
-            let randSeed = seedImgs[Math.floor(Math.random() * seedImgs.length)];
-            ctx.drawImage(randSeed, sx, sy, seedSize, seedSize);
+        if (seedImgs.length > 0 && count > 0) {
+          // If 1 seed, draw it centered.
+          if (count === 1) {
+            let seedSize = 16;
+            let seedImg = seedImgs[Math.floor(Math.random() * seedImgs.length)];
+            ctx.drawImage(seedImg, pos.cx - seedSize/2, pos.cy - seedSize/2, seedSize, seedSize);
+          } else {
+            // For 2-6 seeds, arrange in a centered 3x2 grid.
+            let seedsToDraw = Math.min(count, 6);
+            let seedSize = 16, spacing = 4;
+            let cols = 3, rows = 2;
+            let gridWidth = cols * seedSize + (cols - 1) * spacing;
+            let gridHeight = rows * seedSize + (rows - 1) * spacing;
+            let startX = pos.cx - gridWidth / 2;
+            let startY = pos.cy - gridHeight / 2;
+            for (let i = 0; i < seedsToDraw; i++) {
+              let col = i % cols;
+              let row = Math.floor(i / cols);
+              let sx = startX + col * (seedSize + spacing);
+              let sy = startY + row * (seedSize + spacing);
+              let seedImg = seedImgs[Math.floor(Math.random() * seedImgs.length)];
+              ctx.drawImage(seedImg, sx, sy, seedSize, seedSize);
+            }
+            // If more than 6 seeds, display the count above the pit.
+            if (count > 6) {
+              ctx.fillStyle = "#000";
+              ctx.font = "bold 20px sans-serif";
+              ctx.textAlign = "center";
+              ctx.fillText(count, pos.cx, pos.cy - pitRadius - 10);
+            }
           }
-        } else {
-          ctx.fillStyle = "#000";
-          ctx.font = "20px sans-serif";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(board[key], pos.cx, pos.cy);
         }
       }
       ctx.fillStyle = "#fff";
