@@ -186,7 +186,7 @@
     const difficultyScreen = document.getElementById("difficultyScreen");
     const gameOverScreen = document.getElementById("gameOverScreen");
     
-    let gameState = "menu"; 
+    let gameState = "menu";
     let playerSide = null;
     let difficulty = null;
     let currentPlayer = null;
@@ -306,16 +306,14 @@
     }
     
     ////////////// Capture Animation //////////////
-    // Updated durations: 1000ms travel, 100ms pause, 1000ms travel.
+    // Updated durations: 200ms travel to opposite pit, then 200ms to store with no pause.
     function captureAnimation(lastPit, oppositePit, storeIndex, callback) {
       const oppositePos = { x: pitPositions[oppositePit].cx, y: pitPositions[oppositePit].cy };
       const storePos = { x: pitPositions[storeIndex].cx, y: pitPositions[storeIndex].cy };
-      animateHand(handPos, oppositePos, 1000, () => {
-        setTimeout(() => {
-          animateHand(oppositePos, storePos, 1000, () => {
-            callback();
-          });
-        }, 100);
+      animateHand(handPos, oppositePos, 200, () => {
+        animateHand(oppositePos, storePos, 200, () => {
+          callback();
+        });
       });
     }
     
@@ -669,7 +667,7 @@
       gameOverScreen.style.display = "flex";
     }
     
-    ////////////// Player Move (global) //////////////
+    ////////////// Player Move (Global) //////////////
     function playerMakeMove(pitIndex) {
       if (isAnimating) return;
       if (!isOwnPit(pitIndex, currentPlayer)) return;
