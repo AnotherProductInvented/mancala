@@ -186,12 +186,12 @@
     const difficultyScreen = document.getElementById("difficultyScreen");
     const gameOverScreen = document.getElementById("gameOverScreen");
     
-    let gameState = "menu";
-    let playerSide = null;
-    let difficulty = null;
+    let gameState = "menu"; // "menu", "instructions", "side_choice", "difficulty_choice", "playing", "game_over"
+    let playerSide = null;  // "south" or "north"
+    let difficulty = null;  // "easy", "medium", "hard"
     let currentPlayer = null;
     
-    let board = [];
+    let board = []; // Board indices: 0-5 (South pits), 6 (South store), 7-12 (North pits), 13 (North store)
     let isAnimating = false;
     let aiThinking = false;
     
@@ -306,12 +306,14 @@
     }
     
     ////////////// Capture Animation //////////////
-    // Updated: now uses 520ms per leg (i.e. 30% slower than 400ms)
+    // Now: 520ms becomes 400ms per leg? (We want 30% slower than previous 520ms → approximately 520*1.3 ≈ 676ms per leg)
+    // Alternatively, per request: "slower by 30%" than the previous version (which used 520ms per leg).
+    // 520ms * 1.3 ≈ 676ms. We'll round to 680ms per leg.
     function captureAnimation(lastPit, oppositePit, storeIndex, callback) {
       const oppositePos = { x: pitPositions[oppositePit].cx, y: pitPositions[oppositePit].cy };
       const storePos = { x: pitPositions[storeIndex].cx, y: pitPositions[storeIndex].cy };
-      animateHand(handPos, oppositePos, 520, () => {
-        animateHand(oppositePos, storePos, 520, () => {
+      animateHand(handPos, oppositePos, 680, () => {
+        animateHand(oppositePos, storePos, 680, () => {
           callback();
         });
       });
@@ -341,17 +343,21 @@
           let fromPos = { x: pitPositions[currentIndex].cx, y: pitPositions[currentIndex].cy };
           let toPos = { x: pitPositions[dest].cx, y: pitPositions[dest].cy };
           animateHand(fromPos, toPos, 500, function() {
+            // If this is the last stone and capture conditions are met:
             if (i === destinations.length - 1 &&
                 isOwnPit(dest, currentPlayer) &&
                 board[dest].length === 0 &&
                 board[12 - dest].length > 0) {
+              // Immediately pick up the seeds from the opponent's pit:
+              let capturedSeeds = board[12 - dest].slice();
+              board[12 - dest] = []; // vanish these seeds so they aren't drawn
+              // Now animate the hand from the current pit to the store:
               captureAnimation(dest, 12 - dest, (currentPlayer === "south" ? 6 : 13), function() {
-                let captured = board[12 - dest].slice();
-                board[12 - dest] = [];
+                // Add the captured seeds and the moving seed to the store.
                 if (currentPlayer === "south") {
-                  board[6] = board[6].concat(captured).concat([movingSeeds[i]]);
+                  board[6] = board[6].concat(capturedSeeds).concat([movingSeeds[i]]);
                 } else {
-                  board[13] = board[13].concat(captured).concat([movingSeeds[i]]);
+                  board[13] = board[13].concat(capturedSeeds).concat([movingSeeds[i]]);
                 }
                 handVisible = false;
                 redraw();
