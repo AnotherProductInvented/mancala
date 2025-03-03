@@ -306,12 +306,12 @@
     }
     
     ////////////// Capture Animation //////////////
-    // Updated: now uses 400ms per leg (400ms to opposite pit, 400ms to store) for twice as slow as 200ms.
+    // Updated: now uses 520ms per leg (i.e. 30% slower than 400ms)
     function captureAnimation(lastPit, oppositePit, storeIndex, callback) {
       const oppositePos = { x: pitPositions[oppositePit].cx, y: pitPositions[oppositePit].cy };
       const storePos = { x: pitPositions[storeIndex].cx, y: pitPositions[storeIndex].cy };
-      animateHand(handPos, oppositePos, 400, () => {
-        animateHand(oppositePos, storePos, 400, () => {
+      animateHand(handPos, oppositePos, 520, () => {
+        animateHand(oppositePos, storePos, 520, () => {
           callback();
         });
       });
