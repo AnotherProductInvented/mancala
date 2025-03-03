@@ -122,10 +122,9 @@
   <img id="logo" src="logo.png" alt="Logo">
   
   <script>
-    /*--------------------------
-      Helper: Remove White Background
-      Pixels with R,G,B >230 become transparent.
-    ---------------------------*/
+    /* Helper: Remove White Background
+       Pixels with R,G,B >230 become transparent.
+    */
     function removeWhiteBackground(image, callback) {
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = image.width;
@@ -145,9 +144,7 @@
       newImage.onload = () => callback(newImage);
     }
     
-    /*--------------------------
-      Global Variables & State
-    ---------------------------*/
+    /* Global Variables & State */
     const canvas = document.getElementById("mancalaCanvas");
     const ctx = canvas.getContext("2d");
     
@@ -170,9 +167,7 @@
     
     const WIDTH = 720, HEIGHT = 500;
     
-    /*--------------------------
-      Pit Geometry
-    ---------------------------*/
+    /* Pit Geometry */
     const pitPositions = {};
     const marginX = 120;
     const marginY = 50;
@@ -201,10 +196,7 @@
       pitPositions[13] = { cx: marginX/2, cy: HEIGHT/2, width: storeWidth, height: storeHeight, type: "store" };
     }
     
-    /*--------------------------
-      Image Loading
-      Files: pit.png, hand.png, blueseed.png, redseed.png, greenseed.png, brownseed.png
-    ---------------------------*/
+    /* Image Loading */
     let pitImg = null, handImg = null;
     let seedImgs = [];
     function loadImages(callback) {
@@ -248,18 +240,16 @@
       }
     }
     
-    /*--------------------------
-      Board Initialization
-      Each pit (except stores) gets 4 fixed seeds (color chosen once at game start).
-    ---------------------------*/
+    /* Board Initialization */
     function initBoard() {
       board = [];
       for (let i = 0; i < 14; i++) {
         if (i === 6 || i === 13) {
-          board[i] = [];
+          board[i] = []; // Stores start empty
         } else {
           board[i] = [];
           for (let j = 0; j < 4; j++) {
+            // Choose a fixed seed image at game start.
             let seed = seedImgs[Math.floor(Math.random() * seedImgs.length)];
             board[i].push(seed);
           }
@@ -267,10 +257,7 @@
       }
     }
     
-    /*--------------------------
-      Seed Drawing Helper
-      Returns offsets for drawing up to 6 seeds in a small circle (radius 5) centered in the pit.
-    ---------------------------*/
+    /* Seed Drawing Helper */
     function getSeedOffsets(count) {
       let offsets = [];
       if (count === 1) {
@@ -285,10 +272,7 @@
       return offsets;
     }
     
-    /*--------------------------
-      Hand Animation
-      Smoothly animate the hand from one point to another.
-    ---------------------------*/
+    /* Hand Animation */
     let handPos = { x: 0, y: 0 };
     let handVisible = false;
     function animateHand(from, to, duration, callback) {
@@ -309,15 +293,11 @@
       requestAnimationFrame(step);
     }
     
-    /*--------------------------
-      Capture Animation
-      Smoothly animate the hand from its current position to the opposite pit, then to the store.
-    ---------------------------*/
+    /* Capture Animation */
     function captureAnimation(lastPit, oppositePit, storeIndex, callback) {
       const oppositePos = { x: pitPositions[oppositePit].cx, y: pitPositions[oppositePit].cy };
       const storePos = { x: pitPositions[storeIndex].cx, y: pitPositions[storeIndex].cy };
-      // Animate hand from current position to opposite pit over 2000ms,
-      // then after a brief pause, animate from opposite pit to store.
+      // Animate from current hand position to opposite pit, then to store.
       animateHand(handPos, oppositePos, 2000, () => {
         setTimeout(() => {
           animateHand(oppositePos, storePos, 2000, () => {
@@ -327,11 +307,7 @@
       });
     }
     
-    /*--------------------------
-      Animate Move
-      Moves seeds one-by-one from the selected pit.
-      For the last seed, if capture conditions are met, trigger capture animation.
-    ---------------------------*/
+    /* Animate Move */
     function animateMove(pitIndex, finishCallback) {
       isAnimating = true;
       let stones = board[pitIndex].length;
@@ -355,7 +331,7 @@
           let fromPos = { x: pitPositions[currentIndex].cx, y: pitPositions[currentIndex].cy };
           let toPos = { x: pitPositions[dest].cx, y: pitPositions[dest].cy };
           animateHand(fromPos, toPos, 500, function() {
-            // For the last stone, check for capture condition before dropping.
+            // For the last stone, check for capture conditions BEFORE dropping it.
             if (i === destinations.length - 1 &&
                 isOwnPit(dest, currentPlayer) &&
                 board[dest].length === 0 &&
@@ -363,7 +339,6 @@
               captureAnimation(dest, 12 - dest, (currentPlayer === "south" ? 6 : 13), function() {
                 let captured = board[12 - dest].slice();
                 board[12 - dest] = [];
-                // Include the moving seed as captured.
                 if (currentPlayer === "south") {
                   board[6] = board[6].concat(captured).concat([movingSeeds[i]]);
                 } else {
@@ -395,11 +370,7 @@
       animateNext(0);
     }
     
-    /*--------------------------
-      Draw Board, Seeds, and Counters
-      - Seeds are drawn in a fixed cluster (using their fixed seed objects).
-      - A numeric counter is drawn above each pit and store.
-    ---------------------------*/
+    /* Draw Board, Seeds, and Counters */
     function drawBoard() {
       ctx.clearRect(0, 0, WIDTH, HEIGHT);
       ctx.fillStyle = "#f5deb3";
@@ -431,7 +402,7 @@
             ctx.stroke();
           }
         }
-        // Draw seeds in pit/store (up to 6 in a cluster)
+        // Draw seeds (up to 6 in a cluster)
         let count = board[key].length;
         if (count > 0) {
           let seedsToDraw = Math.min(count, 6);
@@ -463,10 +434,9 @@
       drawBoard();
     }
     
-    /*--------------------------
-      Missing getLegalMoves Function
-      Returns all legal pit indices for the current player.
-    ---------------------------*/
+    /* Missing getLegalMoves Function
+       Returns all legal pit indices for the current player.
+    */
     function getLegalMoves() {
       let moves = [];
       if (currentPlayer === "south") {
@@ -481,9 +451,7 @@
       return moves;
     }
     
-    /*--------------------------
-      Game Logic & Input Handling
-    ---------------------------*/
+    /* Game Logic: Player Move */
     function playerMakeMove(pitIndex) {
       if (isAnimating) return;
       if (!isOwnPit(pitIndex, currentPlayer)) return;
@@ -504,7 +472,7 @@
       });
     }
     
-    // AI simulation helpers (using numeric counts)
+    /* AI Simulation Helpers (using numeric counts) */
     function boardToCounts() {
       let counts = [];
       for (let i = 0; i < board.length; i++) {
