@@ -306,17 +306,16 @@
     }
     
     ////////////// Capture Animation //////////////
-    // This version animates the hand to the opponent's pit over 680ms.
-    // Once the hand reaches, it pauses for 300ms so that the hand covers the pit.
-    // Then, it removes the seeds from the opponent's pit (making them vanish) and animates the hand to the store over 680ms.
-    function captureAnimation(lastPit, oppositePit, storeIndex, callback) {
-      const opponentPos = { x: pitPositions[oppositePit].cx, y: pitPositions[oppositePit].cy };
+    // The hand moves to the opponent’s pit over 680ms.
+    // Then it pauses for 300ms while covering the pit.
+    // Then, the seeds in the opponent's pit are removed and the hand moves to the store over 680ms.
+    function captureAnimation(lastPit, opponentPit, storeIndex, callback) {
+      const opponentPos = { x: pitPositions[opponentPit].cx, y: pitPositions[opponentPit].cy };
       const storePos = { x: pitPositions[storeIndex].cx, y: pitPositions[storeIndex].cy };
       animateHand(handPos, opponentPos, 680, () => {
-        // Pause for 300ms once the hand is over the opponent's pit
         setTimeout(() => {
-          // Remove the seeds from the opponent's pit now that the hand is covering it.
-          board[oppositePit] = [];
+          // Remove the seeds only after the hand is clearly over the opponent's pit.
+          board[opponentPit] = [];
           redraw();
           animateHand(opponentPos, storePos, 680, () => {
             callback();
@@ -349,18 +348,18 @@
           let fromPos = { x: pitPositions[currentIndex].cx, y: pitPositions[currentIndex].cy };
           let toPos = { x: pitPositions[dest].cx, y: pitPositions[dest].cy };
           animateHand(fromPos, toPos, 500, function() {
+            // Check for capture: last stone lands in an empty own pit and opposite pit has seeds.
             if (i === destinations.length - 1 &&
                 isOwnPit(dest, currentPlayer) &&
                 board[dest].length === 0 &&
                 board[12 - dest].length > 0) {
-              // This is a capture: animate to the opponent's pit,
-              // then pause until the hand covers it, remove the seeds, and move to the store.
+              // Save the captured seeds before triggering capture animation.
+              let capturedSeeds = board[12 - dest].slice();
               captureAnimation(dest, 12 - dest, (currentPlayer === "south" ? 6 : 13), function() {
-                let captured = []; // captured seeds have been removed in captureAnimation
                 if (currentPlayer === "south") {
-                  board[6] = board[6].concat(captured).concat([movingSeeds[i]]);
+                  board[6] = board[6].concat(capturedSeeds).concat([movingSeeds[i]]);
                 } else {
-                  board[13] = board[13].concat(captured).concat([movingSeeds[i]]);
+                  board[13] = board[13].concat(capturedSeeds).concat([movingSeeds[i]]);
                 }
                 handVisible = false;
                 redraw();
