@@ -186,12 +186,12 @@
     const difficultyScreen = document.getElementById("difficultyScreen");
     const gameOverScreen = document.getElementById("gameOverScreen");
     
-    let gameState = "menu"; // "menu", "instructions", "side_choice", "difficulty_choice", "playing", "game_over"
-    let playerSide = null;  // "south" or "north"
-    let difficulty = null;  // "easy", "medium", "hard"
-    let currentPlayer = null; // "south" or "north"
+    let gameState = "menu"; 
+    let playerSide = null;
+    let difficulty = null;
+    let currentPlayer = null;
     
-    let board = []; // indices 0-5 (South pits), 6 (South store), 7-12 (North pits), 13 (North store)
+    let board = [];
     let isAnimating = false;
     let aiThinking = false;
     
@@ -306,15 +306,16 @@
     }
     
     ////////////// Capture Animation //////////////
+    // Updated durations: 1000ms travel, 100ms pause, 1000ms travel.
     function captureAnimation(lastPit, oppositePit, storeIndex, callback) {
       const oppositePos = { x: pitPositions[oppositePit].cx, y: pitPositions[oppositePit].cy };
       const storePos = { x: pitPositions[storeIndex].cx, y: pitPositions[storeIndex].cy };
-      animateHand(handPos, oppositePos, 2000, () => {
+      animateHand(handPos, oppositePos, 1000, () => {
         setTimeout(() => {
-          animateHand(oppositePos, storePos, 2000, () => {
+          animateHand(oppositePos, storePos, 1000, () => {
             callback();
           });
-        }, 500);
+        }, 100);
       });
     }
     
@@ -575,10 +576,16 @@
       }
       if (southEmpty || northEmpty) {
         if (!southEmpty) {
-          for (let i = 0; i < 6; i++) { board[6] = board[6].concat(board[i]); board[i] = []; }
+          for (let i = 0; i < 6; i++) {
+            board[6] = board[6].concat(board[i]);
+            board[i] = [];
+          }
         }
         if (!northEmpty) {
-          for (let i = 7; i <= 12; i++) { board[13] = board[13].concat(board[i]); board[i] = []; }
+          for (let i = 7; i <= 12; i++) {
+            board[13] = board[13].concat(board[i]);
+            board[i] = [];
+          }
         }
         return true;
       }
