@@ -113,7 +113,7 @@
     </div>
     <!-- Mancala Game Canvas -->
     <canvas id="mancalaCanvas" width="720" height="500"></canvas>
-    <!-- Bottom bar -->
+    <!-- Bottom Bar -->
     <div id="bottomBar">
       <span>Click a pit to move. Press [M] for menu.</span>
     </div>
@@ -122,9 +122,9 @@
   <img id="logo" src="logo.png" alt="Logo">
   
   <script>
-    ////////////// Helper Functions //////////////
-
-    // Remove white background from an image.
+    ////////////////////// Helper Functions //////////////////////
+    
+    // Remove white background: pixels with R,G,B >230 become transparent.
     function removeWhiteBackground(image, callback) {
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = image.width;
@@ -143,81 +143,44 @@
       newImage.src = tempCanvas.toDataURL();
       newImage.onload = () => callback(newImage);
     }
-
-    // isOwnPit: returns true if pitIndex belongs to the given player.
-    function isOwnPit(pitIndex, player) {
-      if (player === "south") return pitIndex >= 0 && pitIndex <= 5;
-      if (player === "north") return pitIndex >= 7 && pitIndex <= 12;
-      return false;
-    }
-
-    // getLegalMoves: returns an array of pit indices for current player that have seeds.
-    function getLegalMoves() {
-      let moves = [];
-      if (currentPlayer === "south") {
-        for (let i = 0; i < 6; i++) {
-          if (board[i].length > 0) moves.push(i);
-        }
-      } else if (currentPlayer === "north") {
-        for (let i = 7; i <= 12; i++) {
-          if (board[i].length > 0) moves.push(i);
-        }
-      }
-      return moves;
-    }
-
-    // getSeedOffsets: returns offsets for drawing up to 6 seeds in a circle (radius 5) centered in a pit.
-    function getSeedOffsets(count) {
-      let offsets = [];
-      if (count === 1) {
-        offsets.push({ x: 0, y: 0 });
-      } else {
-        let r = 5;
-        for (let i = 0; i < count; i++) {
-          let angle = (2 * Math.PI * i) / count;
-          offsets.push({ x: r * Math.cos(angle), y: r * Math.sin(angle) });
-        }
-      }
-      return offsets;
-    }
-
-    ////////////// Global Variables //////////////
-
+    
+    ////////////////////// Global Variables //////////////////////
+    
     const canvas = document.getElementById("mancalaCanvas");
     const ctx = canvas.getContext("2d");
-
+    
     const menuScreen = document.getElementById("menuScreen");
     const instructionsScreen = document.getElementById("instructionsScreen");
     const sideScreen = document.getElementById("sideScreen");
     const difficultyScreen = document.getElementById("difficultyScreen");
     const gameOverScreen = document.getElementById("gameOverScreen");
-
-    let gameState = "menu";  // "menu", "instructions", "side_choice", "difficulty_choice", "playing", "game_over"
-    let playerSide = null;   // "south" or "north"
-    let difficulty = null;   // "easy", "medium", "hard"
-    let currentPlayer = null;  // whose turn: "south" or "north"
-
+    
+    let gameState = "menu"; // "menu", "instructions", "side_choice", "difficulty_choice", "playing", "game_over"
+    let playerSide = null;  // "south" or "north"
+    let difficulty = null;  // "easy", "medium", "hard"
+    let currentPlayer = null; // whose turn: "south" or "north"
+    
     // Board: indices 0-5 (South pits), 6 (South store), 7-12 (North pits), 13 (North store)
     // Each pit/store is an array of seed objects.
     let board = [];
     let isAnimating = false;
     let aiThinking = false;
-
+    
     const WIDTH = 720, HEIGHT = 500;
-
-    ////////////// Pit Geometry //////////////
-
+    
+    ////////////////////// Pit Geometry //////////////////////
+    
     const pitPositions = {};
     const marginX = 120;
     const marginY = 50;
     const pitRadius = 40;
     const storeWidth = 80, storeHeight = 200;
-
+    
     function computePitPositions() {
       let spacing = (WIDTH - 2 * marginX) / 6;
       // South pits (indices 0–5)
       for (let i = 0; i < 6; i++) {
-        let cx = marginX + spacing/2 + i * spacing;
+        let cx = marginX + spacing / 2 + i * spacing;
         let cy = HEIGHT - marginY;
         pitPositions[i] = { cx, cy, radius: pitRadius, type: "pit" };
       }
@@ -225,18 +188,18 @@
       let northY = marginY + pitRadius + 20;
       for (let i = 7; i < 13; i++) {
         let idx = i - 7;
-        let cx = marginX + spacing/2 + (5 - idx) * spacing;
+        let cx = marginX + spacing / 2 + (5 - idx) * spacing;
         let cy = northY;
         pitPositions[i] = { cx, cy, radius: pitRadius, type: "pit" };
       }
       // South store (index 6) on right
-      pitPositions[6] = { cx: WIDTH - marginX/2, cy: HEIGHT/2, width: storeWidth, height: storeHeight, type: "store" };
+      pitPositions[6] = { cx: WIDTH - marginX / 2, cy: HEIGHT / 2, width: storeWidth, height: storeHeight, type: "store" };
       // North store (index 13) on left
-      pitPositions[13] = { cx: marginX/2, cy: HEIGHT/2, width: storeWidth, height: storeHeight, type: "store" };
+      pitPositions[13] = { cx: marginX / 2, cy: HEIGHT / 2, width: storeWidth, height: storeHeight, type: "store" };
     }
-
-    ////////////// Image Loading //////////////
-
+    
+    ////////////////////// Image Loading //////////////////////
+    
     let pitImg = null, handImg = null;
     let seedImgs = [];
     function loadImages(callback) {
@@ -279,9 +242,9 @@
         };
       }
     }
-
-    ////////////// Board Initialization //////////////
-
+    
+    ////////////////////// Board Initialization //////////////////////
+    
     // Each pit (except stores) gets 4 fixed seeds (the color is chosen once at game start).
     function initBoard() {
       board = [];
@@ -297,9 +260,9 @@
         }
       }
     }
-
-    ////////////// Hand Animation //////////////
-
+    
+    ////////////////////// Hand Animation //////////////////////
+    
     let handPos = { x: 0, y: 0 };
     let handVisible = false;
     function animateHand(from, to, duration, callback) {
@@ -319,13 +282,13 @@
       }
       requestAnimationFrame(step);
     }
-
-    ////////////// Capture Animation //////////////
-
+    
+    ////////////////////// Capture Animation //////////////////////
+    
     function captureAnimation(lastPit, oppositePit, storeIndex, callback) {
       const oppositePos = { x: pitPositions[oppositePit].cx, y: pitPositions[oppositePit].cy };
       const storePos = { x: pitPositions[storeIndex].cx, y: pitPositions[storeIndex].cy };
-      // Animate hand from its current position to opposite pit, pause, then to store.
+      // Animate hand from its current position to opposite pit, then to store.
       animateHand(handPos, oppositePos, 2000, () => {
         setTimeout(() => {
           animateHand(oppositePos, storePos, 2000, () => {
@@ -334,9 +297,9 @@
         }, 500);
       });
     }
-
-    ////////////// Animate Move //////////////
-
+    
+    ////////////////////// Animate Move //////////////////////
+    
     // Moves seeds one-by-one from the selected pit.
     // For the last stone, if capture conditions are met, trigger capture animation.
     function animateMove(pitIndex, finishCallback) {
@@ -400,22 +363,22 @@
       }
       animateNext(0);
     }
-
-    ////////////// Draw Board, Seeds, and Counters //////////////
-
+    
+    ////////////////////// Draw Board, Seeds, and Counters //////////////////////
+    
     function drawBoard() {
       ctx.clearRect(0, 0, WIDTH, HEIGHT);
       ctx.fillStyle = "#f5deb3";
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
       for (let key in pitPositions) {
         let pos = pitPositions[key];
-        // Draw pit or store background
+        // Draw pit/store background
         if (pitImg) {
           if (pos.type === "pit") {
             let size = pos.radius * 2;
             ctx.drawImage(pitImg, pos.cx - pos.radius, pos.cy - pos.radius, size, size);
           } else {
-            ctx.drawImage(pitImg, pos.cx - pos.width/2, pos.cy - pos.height/2, pos.width, pos.height);
+            ctx.drawImage(pitImg, pos.cx - pos.width / 2, pos.cy - pos.height / 2, pos.width, pos.height);
           }
         } else {
           if (pos.type === "pit") {
@@ -427,7 +390,7 @@
             ctx.stroke();
           } else {
             ctx.beginPath();
-            ctx.rect(pos.cx - pos.width/2, pos.cy - pos.height/2, pos.width, pos.height);
+            ctx.rect(pos.cx - pos.width / 2, pos.cy - pos.height / 2, pos.width, pos.height);
             ctx.fillStyle = "#d2b48c";
             ctx.fill();
             ctx.strokeStyle = "#8b4513";
@@ -442,7 +405,7 @@
           let seedSize = 16;
           for (let i = 0; i < seedsToDraw; i++) {
             let seedImg = board[key][i];
-            ctx.drawImage(seedImg, pos.cx + offsets[i].x - seedSize/2, pos.cy + offsets[i].y - seedSize/2, seedSize, seedSize);
+            ctx.drawImage(seedImg, pos.cx + offsets[i].x - seedSize / 2, pos.cy + offsets[i].y - seedSize / 2, seedSize, seedSize);
           }
         }
         // Draw numeric counter above pit/store
@@ -452,13 +415,13 @@
         if (pos.type === "pit") {
           ctx.fillText(count, pos.cx, pos.cy - pos.radius - 10);
         } else {
-          ctx.fillText(count, pos.cx, pos.cy - pos.height/2 - 10);
+          ctx.fillText(count, pos.cx, pos.cy - pos.height / 2 - 10);
         }
       }
       // Draw hand if visible
       if (handVisible && handImg) {
         let handSize = 40;
-        ctx.drawImage(handImg, handPos.x - handSize/2, handPos.y - handSize/2, handSize, handSize);
+        ctx.drawImage(handImg, handPos.x - handSize / 2, handPos.y - handSize / 2, handSize, handSize);
       }
     }
     
@@ -466,7 +429,7 @@
       drawBoard();
     }
     
-    ////////////// AI Simulation Helpers (Numeric Counts) //////////////
+    ////////////////////// AI Simulation Helpers //////////////////////
     
     function boardToCounts() {
       let counts = [];
@@ -614,9 +577,8 @@
       return "tie";
     }
     
-    /*--------------------------
-      Input Handling
-    ---------------------------*/
+    ////////////////////// Input Handling //////////////////////
+    
     canvas.addEventListener("mousedown", function(e) {
       if (gameState !== "playing" || isAnimating) return;
       if (currentPlayer !== playerSide) return;
@@ -648,9 +610,8 @@
       }
     });
     
-    /*--------------------------
-      Screen Management
-    ---------------------------*/
+    ////////////////////// Screen Management //////////////////////
+    
     function hideAllScreens() {
       menuScreen.style.display = "none";
       instructionsScreen.style.display = "none";
@@ -658,34 +619,39 @@
       difficultyScreen.style.display = "none";
       gameOverScreen.style.display = "none";
     }
+    
     function showMenu() {
       hideAllScreens();
       gameState = "menu";
       menuScreen.style.display = "flex";
     }
+    
     function showInstructions() {
       hideAllScreens();
       gameState = "instructions";
       instructionsScreen.style.display = "flex";
     }
+    
     function showSideChoice() {
       hideAllScreens();
       gameState = "side_choice";
       sideScreen.style.display = "flex";
     }
+    
     function showDifficultyChoice() {
       hideAllScreens();
       gameState = "difficulty_choice";
       difficultyScreen.style.display = "flex";
     }
+    
     function showGameOver() {
       hideAllScreens();
+      gameState = "game_over";
       gameOverScreen.style.display = "flex";
     }
     
-    /*--------------------------
-      Main Loop
-    ---------------------------*/
+    ////////////////////// Main Loop //////////////////////
+    
     function mainLoop() {
       if (gameState === "playing") {
         if (currentPlayer !== playerSide && !isAnimating && !aiThinking) {
@@ -699,9 +665,8 @@
       requestAnimationFrame(mainLoop);
     }
     
-    /*--------------------------
-      Button Handlers
-    ---------------------------*/
+    ////////////////////// Button Handlers //////////////////////
+    
     document.getElementById("newGameBtn").onclick = function() { showSideChoice(); };
     document.getElementById("instructionsBtn").onclick = function() { showInstructions(); };
     document.getElementById("southSideBtn").onclick = function() {
@@ -735,9 +700,8 @@
     };
     document.getElementById("gameOverNewGameBtn").onclick = function() { showSideChoice(); };
     
-    /*--------------------------
-      Start Everything
-    ---------------------------*/
+    ////////////////////// Start Everything //////////////////////
+    
     computePitPositions();
     loadImages(function(){
       initBoard();
