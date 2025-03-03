@@ -306,21 +306,22 @@
     }
     
     ////////////// Capture Animation //////////////
-    // This function now animates the hand from its current position to the opponent's pit.
-    // Once the hand reaches the opponent's pit, we wait 100ms (so the hand is visibly over the seeds),
-    // then we clear the opponent's pit (so the seeds vanish) before animating the hand to the store.
+    // This version animates the hand to the opponent's pit over 680ms.
+    // Once the hand reaches, it pauses for 300ms so that the hand covers the pit.
+    // Then, it removes the seeds from the opponent's pit (making them vanish) and animates the hand to the store over 680ms.
     function captureAnimation(lastPit, oppositePit, storeIndex, callback) {
       const opponentPos = { x: pitPositions[oppositePit].cx, y: pitPositions[oppositePit].cy };
       const storePos = { x: pitPositions[storeIndex].cx, y: pitPositions[storeIndex].cy };
       animateHand(handPos, opponentPos, 680, () => {
-        // Now that the hand is over the opponent's pit, wait briefly before removing the seeds.
+        // Pause for 300ms once the hand is over the opponent's pit
         setTimeout(() => {
-          board[oppositePit] = [];  // Remove the seeds so they vanish visually.
+          // Remove the seeds from the opponent's pit now that the hand is covering it.
+          board[oppositePit] = [];
           redraw();
           animateHand(opponentPos, storePos, 680, () => {
             callback();
           });
-        }, 100);
+        }, 300);
       });
     }
     
@@ -352,9 +353,10 @@
                 isOwnPit(dest, currentPlayer) &&
                 board[dest].length === 0 &&
                 board[12 - dest].length > 0) {
+              // This is a capture: animate to the opponent's pit,
+              // then pause until the hand covers it, remove the seeds, and move to the store.
               captureAnimation(dest, 12 - dest, (currentPlayer === "south" ? 6 : 13), function() {
-                let captured = board[12 - dest].slice();
-                board[12 - dest] = [];
+                let captured = []; // captured seeds have been removed in captureAnimation
                 if (currentPlayer === "south") {
                   board[6] = board[6].concat(captured).concat([movingSeeds[i]]);
                 } else {
